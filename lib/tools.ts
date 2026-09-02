@@ -1,59 +1,40 @@
-import { tool } from "ai";
-import { z } from "zod";
+import {
+  convertToModelMessages,
+  stepCountIs,
+  streamText,
+  type UIMessage,
+} from "ai";
+import { google } from "@ai-sdk/google";
+import { getWebsiteInfo } from "@/lib/tools";
 
-export const getWebsiteInfo = tool({
-  description:
-    "Fetch basic information about a website URL, including its title, description, and domain.",
+export const maxDuration = 60;
 
-  inputSchema: z.object({
-    url: z
-      .string()
-      .url()
-      .describe("The complete website URL, for example https://example.com"),
-  }),
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
 
-  execute: async ({ url }) => {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 FE07-Tool-Demo",
-        },
-        signal: AbortSignal.timeout(8000),
-      });
+  const result = streamText({
+    model: google("gemini-3.6-flash"),
 
-      if (!response.ok) {
-        throw new Error(`Website returned HTTP ${response.status}`);
-      }
+    system: `
+You are a helpful website analysis assistant.
 
-      const html = await response.text();
+When the user provides a website URL or asks for information about a
+website, use the getWebsiteInfo tool.
 
-      const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+Always use the getWebsiteInfo tool when a website URL is provided.
 
-      const descriptionMatch = html.match(
-        /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i
-      );
+After receiving the tool result, explain the result briefly and clearly.
+Do not output the raw tool JSON to the user.
+`,
 
-      const title = titleMatch?.[1]?.trim() || "No title found";
+    messages: await convertToModelMessages(messages),
 
-      const description =
-        descriptionMatch?.[1]?.trim() || "No description found";
+    tools: {
+      getWebsiteInfo,
+    },
 
-      const domain = new URL(url).hostname;
+    stopWhen: stepCountIs(3),
+  });
 
-      return {
-        success: true,
-        url,
-        domain,
-        title,
-        description,
-        status: response.status,
-      };
-    } catch (error) {
-      throw new Error(
-        error instanceof Error
-          ? error.message
-          : "Unable to fetch website information"
-      );
-    }
-  },
-});
+  return result.toUIMessageStreamResponse();
+}
