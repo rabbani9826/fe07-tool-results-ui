@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FE-07 — Tool Results & Structured Output in the UI
 
-## Getting Started
+A Next.js application demonstrating server-side AI tools and structured
+tool-result rendering using the Vercel AI SDK and Google Gemini.
 
-First, run the development server:
+## Project Overview
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+This project demonstrates how an AI assistant can call a server-side tool,
+receive structured data, and render the result as a custom UI component
+instead of displaying raw JSON.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The application analyzes a website URL and displays:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Domain
+- Page title
+- Description
+- URL
+- HTTP status
+- Tool success/error state
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech Stack
 
-## Learn More
+- Next.js
+- React
+- TypeScript
+- Vercel AI SDK
+- Google Gemini
+- Zod
+- Tailwind CSS
 
-To learn more about Next.js, take a look at the following resources:
+## Tool Definition
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Tool Name
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`getWebsiteInfo`
 
-## Deploy on Vercel
+### File
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`lib/tools.ts`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Purpose
+
+The `getWebsiteInfo` tool fetches basic information from a website URL.
+
+It retrieves:
+
+- Website domain
+- HTML page title
+- Meta description
+- HTTP response status
+- Requested URL
+
+## Input Schema
+
+The tool uses Zod for input validation.
+
+```ts
+{
+  url: z
+    .string()
+    .url()
+    .describe(
+      "The complete website URL, for example https://example.com"
+    )
+}
