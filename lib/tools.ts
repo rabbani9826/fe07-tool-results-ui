@@ -1,40 +1,61 @@
-import {
-  convertToModelMessages,
-  stepCountIs,
-  streamText,
-  type UIMessage,
-} from "ai";
-import { google } from "@ai-sdk/google";
-import { getWebsiteInfo } from "@/lib/tools";
+import { tool } from "ai";
+import { z } from "zod";
 
-export const maxDuration = 60;
+export const getWebsiteInfo = tool({
+  description:
+    "Fetch basic information about a website URL, including its title, description, and domain.",
 
-export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  inputSchema: z.object({
+    url: z
+      .string()
+      .url()
+      .describe("The complete website URL, for example https://example.com"),
+  }),
 
-  const result = streamText({
-    model: google("gemini-3.6-flash"),
+  execute: async ({ url }) => {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 FE07-Tool-Demo",
+        },
+        signal: AbortSignal.timeout(8000),
+      });
 
-    system: `
-You are a helpful website analysis assistant.
+      if (!response.ok) {
+        throw new Error(`Website returned HTTP ${response.status}`);
+      }
 
-When the user provides a website URL or asks for information about a
-website, use the getWebsiteInfo tool.
+      const html = await response.text();
 
-Always use the getWebsiteInfo tool when a website URL is provided.
+      const titleMatch = html.match(
+        /<title[^>]*>([\s\S]*?)<\/title>/i
+      );
 
-After receiving the tool result, explain the result briefly and clearly.
-Do not output the raw tool JSON to the user.
-`,
+      const descriptionMatch = html.match(
+        /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i
+      );
 
-    messages: await convertToModelMessages(messages),
+      const title = titleMatch?.[1]?.trim() || "No title found";
 
-    tools: {
-      getWebsiteInfo,
-    },
+      const description =
+        descriptionMatch?.[1]?.trim() || "No description found";
 
-    stopWhen: stepCountIs(3),
-  });
+      const domain = new URL(url).hostname;
 
-  return result.toUIMessageStreamResponse();
-}
+      return {
+        success: true,
+        url,
+        domain,
+        title,
+        description,
+        status: response.status,
+      };
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : "Unable to fetch website information"
+      );
+    }
+  },
+});

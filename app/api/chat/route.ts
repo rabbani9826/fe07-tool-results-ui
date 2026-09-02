@@ -7,7 +7,7 @@ import {
 import { google } from "@ai-sdk/google";
 import { getWebsiteInfo } from "@/lib/tools";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
